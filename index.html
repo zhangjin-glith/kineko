@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>梦女字卡 · bimobimo极简</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #e0dbe6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* 聊天框主体 - 很浅的灰色背景 */
+        .chat-frame {
+            width: 100%;
+            max-width: 420px;
+            height: 90vh;
+            background: #f4f4f4;   /* 很浅很浅的灰色 */
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+            position: relative;
+        }
+
+        /* 白色标题栏 - 偏宽一点，内边距稍大 */
+        .chat-header {
+            background: #ffffff;
+            padding: 18px 20px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            border-bottom: 1px solid #efefef;
+        }
+
+        /* 左侧梦角名字 - 偏左，字体偏大无边框 */
+        .dream-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2a2a2a;
+            letter-spacing: -0.3px;
+            background: transparent;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+            line-height: 1.2;
+            transition: opacity 0.1s;
+            margin-left: 4px;
+        }
+        .dream-name:active {
+            opacity: 0.6;
+        }
+
+        /* 右侧黑色小加号 - 纤细一些 */
+        .add-card-btn-header {
+            background: transparent;
+            border: none;
+            font-size: 26px;
+            font-weight: 300;
+            color: #1a1a1a;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            line-height: 1;
+            opacity: 0.75;
+            transition: opacity 0.1s;
+        }
+        .add-card-btn-header:active {
+            opacity: 0.4;
+        }
+
+        /* 消息区域 */
+        .message-area {
+            flex: 1;
+            padding: 20px 16px 16px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            background: #f4f4f4;
+        }
+
+        /* 每条消息的容器 */
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 82%;          /* 气泡偏宽一点 */
+            animation: fadeSlide 0.15s ease;
+        }
+        @keyframes fadeSlide {
+            0% { opacity: 0; transform: translateY(4px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 用户消息靠右 */
+        .message.user {
+            align-self: flex-end;
+        }
+        /* 梦角消息靠左 */
+        .message.bot {
+            align-self: flex-start;
+        }
+
+        /* 气泡通用：纯色无边框无阴影，字体偏小偏粗，气泡偏宽一点通过内边距实现 */
+        .bubble {
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
+            word-break: break-word;
+            color: #1f1f1f;
+        }
+
+        /* 使用者粉色气泡 (纯色) */
+        .message.user .bubble {
+            background: #ffd6e0;
+            border-radius: 20px 20px 6px 20px;
+        }
+
+        /* 梦角白色气泡 (纯白，无阴影无边框) */
+        .message.bot .bubble {
+            background: #ffffff;
+            border-radius: 20px 20px 20px 6px;
+        }
+
+        /* 气泡内的卡片样式 (用于bot回复) 保持纯色简约 */
+        .card-chips {
+            display: inline-block;
+            padding: 6px 16px;
+            margin: 3px 4px 3px 0;
+            border-radius: 28px;
+            background: #efe5f5;
+            color: #2c2c2c;
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+            max-width: 100%;
+            overflow-x: auto;
+            vertical-align: middle;
+        }
+
+        /* 消息底部区域：时间和已读状态布局 */
+        .message-footer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #9c9c9c;
+            margin-top: 5px;
+        }
+
+        /* 用户消息：时间在最左边，已读未读在时间右边 */
+        .message.user .message-footer {
+            justify-content: flex-start;
+            margin-left: 8px;
+        }
+        /* 梦角消息：时间在最右边 */
+        .message.bot .message-footer {
+            justify-content: flex-end;
+            margin-right: 8px;
+        }
+
+        .time-stamp {
+            color: #9c9c9c;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .read-status {
+            background: transparent;
+            color: #9c9c9c;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* 底部输入栏 */
+        .input-footer {
+            background: #ffffff;
+            padding: 14px 18px 20px 18px;
+            border-top: 1px solid #ececec;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-footer input {
+            flex: 1;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 40px;
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+            color: #2a2a2a;
+        }
+        .input-footer input::placeholder {
+            color: #b3b3b3;
+            font-weight: 500;
+        }
+
+        .send-btn {
+            background: transparent;
+            border: none;
+            width: 48px;
+            height: 48px;
+            font-size: 24px;
+            color: #3a3a3a;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.7;
+            transition: opacity 0.1s;
+        }
+        .send-btn:active {
+            opacity: 0.4;
+        }
+
+        /* ---------- 字卡设置面板 (纯色极简) ---------- */
+        .settings-panel {
+            position: absolute;
+            bottom: 85px;
+            left: 16px;
+            right: 16px;
+            background: #ffffff;
+            border-radius: 32px;
+            padding: 24px 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            z-index: 200;
+            transition: transform 0.25s ease, opacity 0.2s;
+            transform: translateY(120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .settings-panel.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .panel-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: 700;
+            color: #2c2c2c;
+            font-size: 18px;
+        }
+
+        .close-panel {
+            background: transparent;
+            border: none;
+            font-size: 26px;
+            color: #5a5a5a;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            opacity: 0.7;
+        }
+
+        .form-row {
+            margin-bottom: 18px;
+        }
+
+        .form-row label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #5a5a5a;
+            margin-bottom: 5px;
+            margin-left: 6px;
+        }
+
+        .form-row input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: #f2f2f2;
+            border: none;
+            border-radius: 32px;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+        }
+
+        .color-duo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #f2f2f2;
+            padding: 8px 16px;
+            border-radius: 40px;
+        }
+
+        .color-duo span {
+            font-size: 13px;
+            font-weight: 600;
+            color: #5a5a5a;
+        }
+
+        input[type="color"] {
+            width: 44px;
+            height: 36px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .font-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .font-opt {
+            flex: 1 0 auto;
+            background: #f2f2f2;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 0;
+            font-size: 13px;
+            font-weight: 700;
+            color: #3a3a3a;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.05s;
+            min-width: 65px;
+        }
+
+        .font-opt.selected {
+            background: #dddddd;
+            color: #1a1a1a;
+        }
+
+        .add-card-btn {
+            background: #2c2c2c;
+            border: none;
+            padding: 14px 20px;
+            width: 100%;
+            border-radius: 40px;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: opacity 0.1s;
+            margin: 12px 0 8px;
+        }
+        .add-card-btn:active {
+            opacity: 0.7;
+        }
+
+        .word-bank-preview {
+            max-height: 160px;
+            overflow-y: auto;
+            background: #f8f8f8;
+            border-radius: 28px;
+            padding: 14px;
+            margin-top: 16px;
+        }
+
+        .bank-header {
+            display: flex;
+            justify-content: space-between;
+            color: #5a5a5a;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .mini-card-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .mini-card-item {
+            background: #ffffff;
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mini-card-remove {
+            background: #e5e5e5;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 14px;
+            color: #2c2c2c;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .empty-msg {
+            color: #b0b0b0;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-frame">
+    <!-- 白色标题栏 - 偏宽，梦角名字偏左 -->
+    <div class="chat-header">
+        <div class="dream-name" id="dreamNameDisplay">梦角</div>
+        <button class="add-card-btn-header" id="openSettingsBtn">➕</button>
+    </div>
+
+    <!-- 聊天消息区域 -->
+    <div class="message-area" id="messageArea">
+        <!-- 初始提示消息 -->
+        <div class="message bot">
+            <div class="bubble">✦ 添加字卡后，我会随机抽卡回复你</div>
+            <div class="message-footer">
+                <span class="time-stamp" id="initTime"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部输入区 -->
+    <div class="input-footer">
+        <input type="text" id="chatInput" placeholder="输入消息..." autocomplete="off">
+        <button class="send-btn" id="sendMsgBtn">➤</button>
+    </div>
+
+    <!-- 字卡设置面板 (点击标题加号呼出) -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="panel-title">
+            🎴 字卡工坊
+            <button class="close-panel" id="closePanelBtn">✕</button>
+        </div>
+
+        <div class="form-row">
+            <label>📝 卡片文字</label>
+            <input type="text" id="cardTextInput" placeholder="写点什么..." maxlength="32">
+        </div>
+        <div class="form-row">
+            <label>🎨 颜色组</label>
+            <div class="color-duo">
+                <span>文字</span>
+                <input type="color" id="textColorPicker" value="#2c2c2c">
+                <span>背景</span>
+                <input type="color" id="bgColorPicker" value="#efe5f5">
+            </div>
+        </div>
+        <div class="form-row">
+            <label>🖋️ 字体</label>
+            <div class="font-group" id="fontSelector">
+                <div class="font-opt selected" data-font="system-ui, sans-serif">圆体</div>
+                <div class="font-opt" data-font="'Courier New', monospace">打字机</div>
+                <div class="font-opt" data-font="'Georgia', serif">衬线</div>
+                <div class="font-opt" data-font="'Comic Sans MS', cursive">手写</div>
+            </div>
+        </div>
+        <button class="add-card-btn" id="addCardBtn">➕ 加入词库</button>
+
+        <div class="word-bank-preview">
+            <div class="bank-header">
+                <span>📋 词库 · 梦女</span>
+                <span id="cardCount">0</span>
+            </div>
+            <div class="mini-card-list" id="miniCardList">
+                <div class="empty-msg">还没有卡片，点击加号添加 ✨</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 字卡数据 ----------
+        let cardLibrary = [];
+        let currentFont = "system-ui, sans-serif";
+
+        // DOM 元素
+        const messageArea = document.getElementById('messageArea');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendMsgBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        const closePanelBtn = document.getElementById('closePanelBtn');
+        const dreamNameDisplay = document.getElementById('dreamNameDisplay');
+
+        // 表单
+        const cardTextInput = document.getElementById('cardTextInput');
+        const textColorPicker = document.getElementById('textColorPicker');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const fontOptions = document.querySelectorAll('.font-opt');
+        const addCardBtn = document.getElementById('addCardBtn');
+        const miniCardList = document.getElementById('miniCardList');
+        const cardCountSpan = document.getElementById('cardCount');
+
+        // 辅助函数
+        function getTimeString() {
+            const d = new Date();
+            return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // 设置初始时间
+        document.getElementById('initTime').innerText = getTimeString();
+
+        // 渲染词库缩略
+        function renderMiniLibrary() {
+            const count = cardLibrary.length;
+            cardCountSpan.innerText = count;
+            if (count === 0) {
+                miniCardList.innerHTML = '<div class="empty-msg">还没有卡片，点击加号添加 ✨</div>';
+                return;
+            }
+            let html = '';
+            cardLibrary.forEach((card, idx) => {
+                const previewStyle = `color: ${card.textColor}; background: ${card.bgColor}; font-family: ${card.font}; padding:4px 10px; border-radius:40px; font-weight:600; font-size:12px;`;
+                html += `
+                    <div class="mini-card-item">
+                        <span style="${previewStyle}">${escapeHtml(card.text.length > 8 ? card.text.slice(0,8)+'…' : card.text)}</span>
+                        <button class="mini-card-remove" data-index="${idx}">✕</button>
+                    </div>
+                `;
+            });
+            miniCardList.innerHTML = html;
+            document.querySelectorAll('.mini-card-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = btn.getAttribute('data-index');
+                    if (idx !== null) {
+                        cardLibrary.splice(parseInt(idx), 1);
+                        renderMiniLibrary();
+                    }
+                });
+            });
+        }
+
+        // 添加字卡
+        function addCard() {
+            const text = cardTextInput.value.trim();
+            if (!text) {
+                alert('请填写卡片文字');
+                return;
+            }
+            cardLibrary.push({
+                text: text,
+                textColor: textColorPicker.value,
+                bgColor: bgColorPicker.value,
+                font: currentFont
+            });
+            cardTextInput.value = '';
+            renderMiniLibrary();
+            cardTextInput.focus();
+        }
+
+        // 字体切换
+        fontOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                fontOptions.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                currentFont = opt.dataset.font;
+            });
+        });
+
+        // 随机抽取1~3张卡片 (返回html数组)
+        function drawRandomCards() {
+            if (cardLibrary.length === 0) {
+                return ['<span style="font-weight:600; opacity:0.7;">💭 词库空，快去添加～</span>'];
+            }
+            const total = cardLibrary.length;
+            let drawNum = Math.floor(Math.random() * 3) + 1; // 1~3
+            drawNum = Math.min(drawNum, total);
+            const shuffled = [...cardLibrary].sort(() => Math.random() - 0.5);
+            const selected = shuffled.slice(0, drawNum);
+            return selected.map(card => {
+                return `<span class="card-chips" style="color: ${card.textColor}; background: ${card.bgColor}; font-family: ${card.font};">${escapeHtml(card.text)}</span>`;
+            });
+        }
+
+        // 添加消息到聊天区
+        // type: 'user' 或 'bot'
+        function appendMessage(type, contentHtml) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = contentHtml;
+            msgDiv.appendChild(bubble);
+
+            const footer = document.createElement('div');
+            footer.className = 'message-footer';
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'time-stamp';
+            timeSpan.innerText = getTimeString();
+
+            if (type === 'user') {
+                // 使用者气泡：时间在最左边，已读/未读在时间右边
+                footer.appendChild(timeSpan);
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'read-status';
+                // 随机已读未读
+                statusSpan.innerText = Math.random() > 0.25 ? '已读' : '未读';
+                footer.appendChild(statusSpan);
+            } else {
+                // 梦角气泡：时间在最右边，不显示已读未读
+                footer.appendChild(timeSpan);
+            }
+
+            msgDiv.appendChild(footer);
+            messageArea.appendChild(msgDiv);
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+
+        // 处理用户发送
+        function handleSend() {
+            const userMsg = chatInput.value.trim();
+            if (userMsg === '') return;
+
+            // 发送用户消息 (粉色气泡，带已读/未读)
+            appendMessage('user', escapeHtml(userMsg));
+            chatInput.value = '';
+
+            // 模拟回复延迟
+            setTimeout(() => {
+                const cardChips = drawRandomCards();
+                const replyHtml = cardChips.join(' ');
+                appendMessage('bot', replyHtml);
+            }, 200);
+        }
+
+        // 面板控制
+        openSettingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.add('show');
+        });
+        closePanelBtn.addEventListener('click', () => {
+            settingsPanel.classList.remove('show');
+        });
+
+        // 添加卡片事件
+        addCardBtn.addEventListener('click', addCard);
+        cardTextInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCard();
+            }
+        });
+
+        // 发送消息
+        sendBtn.addEventListener('click', handleSend);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        // 双击梦角名字自定义 (字体偏大无边框)
+        dreamNameDisplay.addEventListener('dblclick', () => {
+            const newName = prompt('输入梦角的名字', dreamNameDisplay.innerText);
+            if (newName && newName.trim() !== '') {
+                dreamNameDisplay.innerText = newName.trim();
+            }
+        });
+
+        // 预置三条示例卡片 (让初次使用有趣)
+        setTimeout(() => {
+            if (cardLibrary.length === 0) {
+                cardLibrary.push({
+                    text: '今天也很想你',
+                    textColor: '#2c2c2c',
+                    bgColor: '#f0e4fc',
+                    font: 'system-ui, sans-serif'
+                });
+                cardLibrary.push({
+                    text: '💌 贴贴',
+                    textColor: '#2c2c2c',
+                    bgColor: '#ffe0ec',
+                    font: "'Comic Sans MS', cursive"
+                });
+                cardLibrary.push({
+                    text: 'bimobimo☆',
+                    textColor: '#2c2c2c',
+                    bgColor: '#e6f0fa',
+                    font: "'Georgia', serif"
+                });
+                renderMiniLibrary();
+            }
+        }, 150);
+    })();
+</script>
+</body>
+</html>
